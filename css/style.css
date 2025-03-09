@@ -305,7 +305,23 @@ line-height: 1;
     gap: 2.5rem;
     margin-top: 5rem;
 }
-
+.hidden {
+    display: none; /* Hide the additional content initially */
+  }
+  
+  #more-button {
+    background-color: #0073b1;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  
+  #more-button:hover {
+    background-color: #005f8b;
+  }
 .row{
     position: relative;
     overflow: hidden;

@@ -11,7 +11,7 @@
     
     <link rel="stylesheet" type="text/css" href="css/style.css">
 <!-- <script defer src="./index.js"> </script> -->
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> -->
 <title>Portfolio Website</title>
 
 </head>
@@ -58,15 +58,15 @@
         <h4>Full Stack Developer</h4>
         <p>I hold a Master’s degree in Computer and System Sciences from Stockholm University, where I worked on core projects in data mining, machine learning, IoT and edge computing, security, and Python programming for data analytics. These experiences have equipped me with a strong foundation in both theoretical and practical aspects of data-driven technologies.
 
-            I’m deeply passionate about data management, data analysis, and Python programming, and I’m always eager to learn and grow in these areas. 🌱 Currently, I’m expanding my expertise in Python for data manipulation, machine learning, and data visualization, with a strong focus on tools like Pandas, NumPy, Matplotlib, and Scikit-learn.
+            <span id="more-content" class="hidden">I’m deeply passionate about data analytics and machine learning, and Python programming, and I’m always eager to learn and grow in these areas. 🌱 Currently, I’m expanding my expertise in Python for data manipulation, machine learning, and data visualization, with a strong focus on tools like Pandas, NumPy, Matplotlib, and Scikit-learn.
             
             Professionally, my experience revolves around data management and data analysis, where I’ve worked on extracting actionable insights from complex datasets and building scalable data solutions. I’m particularly interested in leveraging data to solve real-world problems and drive decision-making. 💞️
             
             I’m actively seeking opportunities to contribute to open-source data projects or collaborate with like-minded professionals to build impactful data-driven solutions. If you’re working on anything related to data analysis, machine learning, or Python development, I’d love to connect and explore how we can work together! 🚀
-            
+            </span>
             📫</p>
             
-            <a href="#" class="btn">More About</a>
+            <button id="more-button" class="btn">More About</button>
         </div>
         
     </section>
@@ -257,7 +257,7 @@
     </div>
 </section>
 
-<script>
+<!-- <script>
 
     // submit form
     
@@ -307,9 +307,23 @@
         });
 
 
-</script>
+</script> -->
 
 <!--custom js link-->
 <!-- <script type="text/javascript" src="js/script.js"></script>     -->
+<script src="js/script.js">
+    document.getElementById("more-button").addEventListener("click", function () {
+  const moreContent = document.getElementById("more-content");
+  const button = document.getElementById("more-button");
+
+  if (moreContent.classList.contains("hidden")) {
+    moreContent.classList.remove("hidden");
+    button.textContent = "Less";
+  } else {
+    moreContent.classList.add("hidden");
+    button.textContent = "More";
+  }
+});
+</script>
 </body>
 </html>
