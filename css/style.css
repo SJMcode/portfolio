@@ -311,6 +311,7 @@ line-height: 1;
     overflow: hidden;
     border-radius: 8px;
     cursor: pointer;
+    width: 100%;
 }
 .row img{
     width: 100%;
