@@ -1,0 +1,115 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String      @id @default(uuid())
+  name          String
+  email         String      @unique
+  emailVerified Boolean     @default(false)
+  image         String?
+  role          String?     @default("user")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  signatures    Guestbook[] // Relation linking comments to user profiles
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Verification {
+  id         String    @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+}
+
+model Guestbook {
+  id        Int      @id @default(autoincrement())
+  userId    String?  // Optional: Null if signed anonymously
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name      String
+  text      String
+  createdAt DateTime @default(now())
+}
+
+model BlogPost {
+  id        Int      @id @default(autoincrement())
+  title     String
+  category  String
+  date      String
+  readTime  String
+  excerpt   String
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model Endorsement {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+}
+
+model ProfileInfo {
+  id      Int    @id @default(1)
+  summary String
+}
+
+model WorkExperience {
+  id          String   @id @default(uuid())
+  role        String
+  company     String
+  duration    String
+  description String
+  createdAt   DateTime @default(now())
+}
+
+model Skill {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model ProjectCase {
+  id          String   @id @default(uuid())
+  title       String
+  category    String
+  image       String
+  url         String
+  techStack   String
+  linkText    String
+  createdAt   DateTime @default(now())
+}
