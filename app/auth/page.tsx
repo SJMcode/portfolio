@@ -9,7 +9,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useRouter } from "next/navigation";
 
 export default function AuthPage() {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const router = useRouter();
   const { data: session, isPending: sessionLoading } = authClient.useSession();
 
@@ -70,7 +70,15 @@ export default function AuthPage() {
     setIsAuthLoading(false);
 
     if (error) {
-      toast.error(error.message || "Sign in failed.");
+      const isInvalidCreds = error.message?.toLowerCase().includes("invalid") || error.status === 403 || error.status === 401;
+      if (isInvalidCreds) {
+        const errorMsg = language === "sv"
+          ? "Detta konto verkar inte finnas eller så angavs fel uppgifter. Registrera dig först om du är ny!"
+          : "This account doesn't seem to exist or invalid credentials. Please Sign Up first if you are new!";
+        toast.error(errorMsg);
+      } else {
+        toast.error(error.message || "Sign in failed.");
+      }
     } else {
       toast.success(t("guestbook_login_success", { default: "Logged in successfully!" }) === "guestbook_login_success" ? "Inloggad framgångsrikt!" : t("guestbook_login_success"));
       router.push("/guestbook");
