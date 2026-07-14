@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import type { Skill, ProjectCase } from "@prisma/client";
 
 // Verify admin authorization
 async function checkAdmin() {
@@ -110,8 +111,8 @@ export async function getSkillsData() {
     });
 
     return {
-      skills: skills.map(s => ({ id: s.id, name: s.name })),
-      cases: cases.map(c => ({
+      skills: skills.map((s: Skill) => ({ id: s.id, name: s.name })),
+      cases: cases.map((c: ProjectCase) => ({
         id: c.id,
         title: c.title,
         category: c.category,

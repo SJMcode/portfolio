@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import type { WorkExperience } from "@prisma/client";
 
 // Verify if the active user is an authorized admin
 async function checkAdmin() {
@@ -73,7 +74,7 @@ export async function getProfileData() {
 
     return {
       summary: info?.summary || null,
-      experiences: experiences.map(exp => ({
+      experiences: experiences.map((exp: WorkExperience) => ({
         id: exp.id,
         role: exp.role,
         company: exp.company,
