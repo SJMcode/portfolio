@@ -870,6 +870,172 @@ This runs the compiled application, handling active user sessions and routing qu
 `
   };
 
+  const blog5 = {
+    title: "Mastering TypeScript: Type Safety, Tuples, and Narrowing",
+    category: "TypeScript",
+    date: "2026-07-16",
+    readTime: "12 min read",
+    excerpt: "A high-impact guide to TypeScript development, covering core types, interfaces, union types, type narrowing, tuples, and custom helpers based on practical coding exercises.",
+    content: `TypeScript has become the industry standard for scaling web applications. By wrapping JavaScript in a robust, static type checker, it catches developer errors during compile-time rather than letting them crash in production.
+
+---
+
+### 1. Basic Type Annotations
+In JavaScript, variables can hold any type of value and change dynamically. TypeScript introduces **static type annotations** to declare the expected shape of data:
+
+\`\`\`typescript
+let userName: string = "Alice";
+let age: number = 25;
+let isStudent: boolean = true;
+let hobbies: string[] = ["reading", "gaming", "coding"];
+
+// Typed function parameters and return type
+function greet(name: string, age: number): string {
+  return \`Hello, my name is \${name} and I am \${age} years old.\`;
+}
+
+function calculateArea(width: number, height: number): number {
+  return width * height;
+}
+
+console.log(greet("Bob", 30));
+console.log(calculateArea(5, 10));
+\`\`\`
+
+---
+
+### 2. Interfaces & Object Shapes
+To declare shapes of complex objects (like data objects fetched from APIs or databases), we use **Interfaces**. Interfaces act as a strict code contract for the compiler:
+
+\`\`\`typescript
+interface Book {
+  title: string;
+  author: string;
+  year: number;
+  isAvailable: boolean;
+}
+
+const library: Book[] = [
+  {
+    title: "The Great Gatsby",
+    author: "F. Scott Fitzgerald",
+    year: 1925,
+    isAvailable: true
+  },
+  {
+    title: "To Kill a Mockingbird",
+    author: "Harper Lee",
+    year: 1960,
+    isAvailable: false
+  }
+];
+
+// Compile-safe filter function
+function getAvailableBooks(books: Book[]): Book[] {
+  return books.filter(book => book.isAvailable);
+}
+
+// Returns a Book object or undefined if not found
+function findBookByTitle(books: Book[], title: string): Book | undefined {
+  return books.find(book => book.title === title);
+}
+\`\`\`
+
+---
+
+### 3. Union Types & Type Narrowing
+Often, a variable can contain more than one type of data. We represent this using **Union Types** (\`|\`). To safely operate on union values, we must perform **Type Narrowing** to check the type at runtime:
+
+\`\`\`typescript
+type ID = string | number;
+
+function formatID(id: ID): string {
+  // Type Narrowing using typeof
+  if (typeof id === "number") {
+    return \`ID-\${id}\`; // Compiler knows it is safely a number here
+  } else {
+    return id.toUpperCase(); // Compiler knows it is safely a string here
+  }
+}
+
+console.log(formatID(123)); // Output: "ID-123"
+console.log(formatID("abc")); // Output: "ABC"
+\`\`\`
+
+#### Literal Union Roles
+We can restrict a value to a fixed set of exact string literals rather than any general string:
+
+\`\`\`typescript
+type UserRole = "admin" | "user" | "guest";
+
+interface User {
+  id: ID;
+  name: string;
+  role: UserRole;
+  email?: string; // Optional property marked by "?"
+}
+
+function isAdmin(user: User): boolean {
+  return user.role === "admin";
+}
+
+function getRoleGreeting(user: User): string {
+  switch (user.role) {
+    case "admin":
+      return \`Welcome, \${user.name}! You have administrative access.\`;
+    case "user":
+      return \`Hello, \${user.name}! Standard access active.\`;
+    case "guest":
+      return \`Welcome, Guest \${user.name}!\`;
+  }
+}
+\`\`\`
+
+---
+
+### 4. Tuples: Fixed-Length Arrays
+A **Tuple** is a special array layout with a fixed number of elements where each index has a predefined, specific type.
+
+#### Example A: Geographic Coordinates \`[x, y]\`
+\`\`\`typescript
+// Predefines an array of exactly 2 numbers
+type Coordinate = [number, number];
+
+function calculateDistance(point1: Coordinate, point2: Coordinate): number {
+  const [x1, y1] = point1;
+  const [x2, y2] = point2;
+  // Euclidean distance formula: sqrt((x2-x1)² + (y2-y1)²)
+  return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+}
+
+const pointA: Coordinate = [0, 0];
+const pointB: Coordinate = [3, 4];
+console.log(calculateDistance(pointA, pointB)); // Output: 5 (3-4-5 triangle)
+\`\`\`
+
+#### Example B: RGB Color Arrays \`[r, g, b]\`
+\`\`\`typescript
+type RGB = [number, number, number];
+
+function rgbToHex(color: RGB): string {
+  const [r, g, b] = color;
+  const hex = (val: number) => val.toString(16).padStart(2, '0');
+  return \`#\${hex(r)}\${hex(g)}\${hex(b)}\`.toUpperCase();
+}
+
+const customOrange: RGB = [255, 128, 0];
+console.log(rgbToHex(customOrange)); // Output: "#FF8000"
+\`\`\`
+
+---
+
+### 5. Summary: Core Takeaways
+*   **Compile-time Checks**: TypeScript type verification exists only during development. At build time, it gets transpiled into clean, regular JavaScript.
+*   **Safety Over Any**: Avoid using the \`any\` escape hatch. Instead, use union types or \`unknown\` to enforce strict type-safe inspections.
+*   **Optional Chaining**: Use \`?\` to safely query nested parameters without checking if intermediate elements exist.
+`
+  };
+
   try {
     console.log("Connecting to database to insert/update blog posts...");
     
@@ -931,6 +1097,21 @@ This runs the compiled application, handling active user sessions and routing qu
         data: blog4
       });
       console.log(`Updated Blog Post: "${updated4.title}" (ID: ${updated4.id})`);
+    }
+
+    // Check & Seed Blog 5
+    const existing5 = await prisma.blogPost.findFirst({
+      where: { title: blog5.title }
+    });
+    if (!existing5) {
+      const created5 = await prisma.blogPost.create({ data: blog5 });
+      console.log(`Created Blog Post: "${created5.title}" (ID: ${created5.id})`);
+    } else {
+      const updated5 = await prisma.blogPost.update({
+        where: { id: existing5.id },
+        data: blog5
+      });
+      console.log(`Updated Blog Post: "${updated5.title}" (ID: ${updated5.id})`);
     }
 
     console.log("Seeding complete!");
