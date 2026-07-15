@@ -362,6 +362,64 @@ aws ec2 authorize-security-group-ingress \\
   --port 80 \\
   --cidr 0.0.0.0/0
 \`\`\`
+
+---
+
+### 10. CI/CD Lifecycle: From git push to Production
+The journey of a code change follows this sequence:
+
+*   **Continuous Integration (CI)**:
+    *   **Trigger**: A developer pushes code to \`main\` or opens a Pull Request.
+    *   **Setup**: The pipeline spins up a clean, isolated container (e.g., Ubuntu).
+    *   **Install & Lint**: Runs \`npm ci\` and \`eslint\` to ensure standard dependencies and clean code styling.
+    *   **Test**: Executes all unit and integration tests (\`npm run test\`).
+    *   **Build**: Compiles the project (e.g., \`npm run build\` or packages a Docker container).
+*   **Continuous Delivery/Deployment (CD)**:
+    *   **Deploy to Staging**: Injects staging variables and deploys code to a test/staging environment.
+    *   **Integration Tests**: Automated end-to-end tests (like Cypress) run against the live staging URL.
+    *   **Deploy to Production**: Promotes/swaps the build to the live server (using Blue-Green deployment or serverless CDNs like Vercel).
+
+---
+
+### 11. DevSecOps: Security Scanning
+Security (DevSecOps) is executed at different stages of the lifecycle to prevent vulnerabilities from reaching production:
+
+| Security Type | Where It Runs | Tools Used | What It Does |
+| :--- | :--- | :--- | :--- |
+| **SCA** (Software Composition Analysis) | **CI Phase (Early)** - Right after dependencies are installed. | \`npm audit\`, \`Snyk\` | Scans third-party libraries (\`package.json\`) for known security flaws. |
+| **SAST** (Static Application Security Testing) | **CI Phase (Before Build)** - Analyzes the raw code. | \`SonarQube\`, \`GitHub CodeQL\` | Scans raw source code for code smells, SQL injection entry points, or hardcoded secrets. |
+| **Container Scanning** | **CI Phase (Post-Build)** - Right after creating a Docker image. | \`Trivy\`, \`Anchore\` | Scans the container's base operating system files for OS-level vulnerabilities. |
+| **DAST** (Dynamic Application Security Testing) | **Post-Deploy (Staging)** - Scans the active running website. | \`OWASP ZAP\` | Simulates active hacker attacks (like XSS or SQLi) against the live staging application. |
+
+---
+
+### 12. Secret Management: Storing Secrets, Passwords, and API Keys
+*   **Rule #1**: Never commit secrets to Git.
+*   **CI/CD Pipeline Secrets**: Store in GitHub Secrets or Jenkins Credentials. They are injected as encrypted environment variables in the repository settings page and accessed during build time via \`\${{ secrets.SUPABASE_API_KEY }}\`.
+*   **Enterprise Cloud Secrets Managers**: Use HashiCorp Vault, AWS Secrets Manager, or Google Cloud Secret Manager. The runner authenticates via IAM roles and fetches the secrets dynamically.
+*   **OIDC (OpenID Connect)**: Modern pipelines do not store permanent credentials (like AWS Access Keys) in GitHub. Instead, they use OIDC to request short-lived, temporary access tokens from AWS during the build run.
+
+---
+
+### 13. Rollback Strategies: Handling Deployment Failures
+If a live deployment fails, the goal is to return to a working state instantly with zero downtime:
+
+1.  **Instant CDN/DNS Rollback (Vercel/Netlify)**:
+    *   Vercel keeps a history of your previous successful builds. If a deployment fails, you click "Rollback" (or trigger it via API). Vercel instantly routes your domain to point to the previous successful build hash. This takes 1 second and requires no code compiling.
+2.  **Blue-Green Deployments (AWS/Docker/Kubernetes)**:
+    *   You maintain two environments: **Blue** (current live version) and **Green** (new deployment).
+    *   You deploy the new version to Green. A load balancer runs health checks. If Green fails health checks, traffic is kept on Blue. The user never notices a crash.
+3.  **Database Migration Safety**:
+    *   Migrations must be backward compatible. Never delete database columns during a new deployment. Instead, add columns first, deploy the code, verify, and then delete old columns in a subsequent release. This allows you to roll back code without breaking the database.
+
+---
+
+### 14. Real-World Interview Case Study: Cache Corruption
+*   **The Problem**: Corrupted dependency caching leading to build failures.
+*   **Situation**: We cached \`node_modules\` in our GitHub Actions pipeline to speed up the builds. However, when a developer updated a package version (e.g. from 1.1.0 to 1.2.0), the CI server kept using the old cached \`node_modules\` folder, causing compile errors in production like "Module not found" or typing mismatches.
+*   **The Resolution**:
+    1.  **Cache Key Hashing**: We updated the cache action key to hash the lockfile: \`key: npm-\${{ hashFiles('package-lock.json') }}\`. If the lockfile changes, the cache is instantly invalidated, forcing a clean download.
+    2.  **Enforced Clean Installs**: We replaced \`npm install\` with \`npm ci\` in our pipeline. \`npm ci\` is designed specifically for CI servers: it deletes the local \`node_modules\` folder first, verifies the lockfile matches the \`package.json\` exactly, and installs dependencies cleanly. This eliminated caching bugs completely.
 `
   };
 
@@ -375,7 +433,11 @@ aws ec2 authorize-security-group-ingress \\
       const created1 = await prisma.blogPost.create({ data: blog1 });
       console.log(`Created Blog Post: "${created1.title}" (ID: ${created1.id})`);
     } else {
-      console.log(`Blog post "${blog1.title}" already exists.`);
+      const updated1 = await prisma.blogPost.update({
+        where: { id: existing1.id },
+        data: blog1
+      });
+      console.log(`Updated Blog Post: "${updated1.title}" (ID: ${updated1.id})`);
     }
 
     const existing2 = await prisma.blogPost.findFirst({
@@ -385,7 +447,11 @@ aws ec2 authorize-security-group-ingress \\
       const created2 = await prisma.blogPost.create({ data: blog2 });
       console.log(`Created Blog Post: "${created2.title}" (ID: ${created2.id})`);
     } else {
-      console.log(`Blog post "${blog2.title}" already exists.`);
+      const updated2 = await prisma.blogPost.update({
+        where: { id: existing2.id },
+        data: blog2
+      });
+      console.log(`Updated Blog Post: "${updated2.title}" (ID: ${updated2.id})`);
     }
 
     console.log("Seeding complete!");
