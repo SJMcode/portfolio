@@ -627,6 +627,249 @@ An API gateway sits between the client (mobile app or browser) and your backend 
 `
   };
 
+  const blog4 = {
+    title: "Building Next.js Applications from Scratch: A Developer's Handbook",
+    category: "Next.js",
+    date: "2026-07-16",
+    readTime: "15 min read",
+    excerpt: "A comprehensive, step-by-step roadmap to initializing, structuring, and deploying a Next.js (App Router) project from absolute scratch, covering routing, data fetching, and security.",
+    content: `This guide serves as a practical, step-by-step blueprint for developers looking to initialize, construct, and deploy a robust Next.js application using the modern **App Router** paradigm.
+
+---
+
+### 1. Introduction: Why Next.js?
+React is a powerful client-side library for rendering user interfaces, but it leaves framework architecture, routing, SEO, and server-side operations entirely up to the developer. Next.js is a production-grade full-stack framework built on top of React that introduces:
+*   **Zero-Config Compilation**: Automated compiling, bundling (Webpack/Turbopack), and code splitting.
+*   **Hybrid Rendering**: Server-Side Rendering (SSR), Static Site Generation (SSG), and Client-Side Hydration out of the box.
+*   **Built-in Optimization**: Automated image size tuning, font loading, script caching, and SEO crawlers.
+
+---
+
+### 2. Initialization: Setting Up the Workspace
+
+#### Method A: Automated Scaffolding (Recommended)
+The fastest way to scaffold a Next.js project is running the interactive CLI script:
+\`\`\`bash
+npx create-next-app@latest my-app
+\`\`\`
+The setup script will ask for the following choices:
+*   **TypeScript**: Yes (Enforces strict compiler checks and static typing).
+*   **ESLint**: Yes (Maintains consistent code formatting and flags syntax warnings).
+*   **Tailwind CSS**: Yes (For rapid, utility-first UI styling).
+*   **src/ directory**: Yes (Keeps project configurations separated from core source code).
+*   **App Router**: Yes (Enables the modern layout, nested routing, and Server Components).
+*   **Import Alias**: \`@/*\` (Maps import routes starting from the root \`/src\` folder).
+
+#### Method B: Manual Initialization
+If you want to understand what goes on under the hood, you can bootstrap the application manually:
+
+1. Create a new directory and initialize npm:
+\`\`\`bash
+mkdir manual-next-app && cd manual-next-app
+npm init -y
+\`\`\`
+
+2. Install core React and Next.js dependencies:
+\`\`\`bash
+npm install next react react-dom
+\`\`\`
+
+3. Install development tooling (TypeScript & type definitions):
+\`\`\`bash
+npm install -D typescript @types/react @types/react-dom @types/node
+\`\`\`
+
+4. Configure package scripts in your \`package.json\`:
+\`\`\`json
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "next lint"
+}
+\`\`\`
+
+5. Initialize the Next.js directories:
+\`\`\`bash
+mkdir -p app
+touch app/layout.tsx app/page.tsx
+\`\`\`
+
+---
+
+### 3. File & Directory Conventions
+The Next.js App Router relies on **file-based routing**. The folders inside the \`app\` directory define URL routes, and specific file names represent specific layouts or component behaviours:
+
+*   **\`layout.tsx\`**: Defines UI shared across multiple pages (e.g., headers, footers, context providers). It wraps children and does not re-render during navigation.
+*   **\`page.tsx\`**: Represents the unique visual content of the URL route.
+*   **\`loading.tsx\`**: Renders fallback skeleton loaders using React Suspense during data fetches.
+*   **\`error.tsx\`**: Defines error boundary fallbacks for runtime exceptions.
+*   **\`not-found.tsx\`**: Renders default 404 response page when resources aren't found.
+*   **\`route.ts\`**: Handles custom HTTP API methods (GET, POST, PUT, DELETE) rather than returning React components.
+
+---
+
+### 4. Core Concepts: App Router Architecture
+
+#### Server Components (RSC) vs. Client Components
+By default, **every component inside the App Router is a React Server Component (RSC)**.
+
+| Feature | React Server Components (RSC) | Client Components (\`"use client"\`) |
+| :--- | :--- | :--- |
+| **Execution Environment** | Executed purely on the Server. | Prerendered on the server, hydrated/run on the Client. |
+| **Client Bundle Size** | **Zero**. No JS bundle is sent to the client. | Standard bundle size sent to the browser. |
+| **Data Fetching** | Fetch database or external APIs asynchronously directly inside components. | Fetch data using hooks like \`useEffect\` or state libraries. |
+| **Interactivity & State** | **Unsupported** (Cannot use \`useState\`, \`useEffect\`, or click listeners). | **Supported** (Full access to all hooks, state, and browser APIs). |
+
+##### Example of a Server Component:
+\`\`\`tsx
+// app/blog/page.tsx (Runs strictly on the server)
+import { prisma } from "@/lib/prisma";
+
+export default async function BlogPage() {
+  const posts = await prisma.blogPost.findMany(); // Query database directly!
+
+  return (
+    <main className="p-8">
+      <h1>Tech Journal</h1>
+      {posts.map(post => (
+        <article key={post.id} className="mt-4">
+          <h2>{post.title}</h2>
+          <p>{post.excerpt}</p>
+        </article>
+      ))}
+    </main>
+  );
+}
+\`\`\`
+
+##### Example of a Client Component:
+To create a Client Component, place the \`"use client"\` directive at the absolute top of your file:
+\`\`\`tsx
+// components/Counter.tsx
+"use client"; // Enforces client hydration
+
+import { useState } from "react";
+
+export function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <button onClick={() => setCount(count + 1)} className="px-4 py-2 bg-indigo-500 rounded">
+      Click count: {count}
+    </button>
+  );
+}
+\`\`\`
+
+---
+
+### 5. Routing Patterns
+
+#### 1. Dynamic Routing
+To match parameters dynamically in the URL (e.g., \`/blog/first-post\`), wrap the folder name in square brackets:
+\`\`\`text
+app/
+ └─ blog/
+     └─ [slug]/
+         └─ page.tsx
+\`\`\`
+Inside \`app/blog/[slug]/page.tsx\`, retrieve the dynamic slug parameters from the page props:
+\`\`\`tsx
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function BlogPostPage({ params }: PageProps) {
+  const { slug } = await params;
+  return <div>Reading blog post: {slug}</div>;
+}
+\`\`\`
+
+#### 2. Route Groups
+If you want to organize files without affecting the URL route (e.g., keeping authentication routes separated), wrap the folder name in parentheses:
+\`\`\`text
+app/
+ ├─ (auth)/
+ │   ├─ login/
+ │   │   └─ page.tsx   --> Resolves to /login
+ │   └─ signup/
+ │       └─ page.tsx   --> Resolves to /signup
+ └─ page.tsx
+\`\`\`
+
+---
+
+### 6. Mutation & Data Safety: Server Actions
+Server Actions allow Next.js client components to securely invoke server-side functions (such as database inserts or database updates) without exposing raw API endpoints or handling fetch headers manually.
+
+#### 1. Server-side Action Definition (\`app/actions.ts\`):
+\`\`\`typescript
+"use server"; // Enforces function runs strictly on the server
+
+import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
+
+export async function addComment(formData: { name: string; text: string }) {
+  if (!formData.name || !formData.text) {
+    return { ok: false, error: "Validation failed." };
+  }
+
+  try {
+    await prisma.comment.create({
+      data: {
+        name: formData.name,
+        text: formData.text
+      }
+    });
+    // Invalidate the cache to display the new comment instantly
+    revalidatePath("/guestbook");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: "Database transaction failed." };
+  }
+}
+\`\`\`
+
+#### 2. Client-side Invocation (\`app/guestbook/page.tsx\`):
+\`\`\`tsx
+"use client";
+
+import { addComment } from "@/app/actions";
+import { toast } from "sonner";
+
+export default function Guestbook() {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await addComment({ name: "Alice", text: "Hello from client!" });
+    if (res.ok) {
+      toast.success("Comment saved!");
+    }
+  };
+
+  return <form onSubmit={handleSubmit}>...</form>;
+}
+\`\`\`
+
+---
+
+### 7. Deployment Lifecycle
+To host and compile your Next.js application for production:
+
+1. **Build the Application**:
+\`\`\`bash
+npm run build
+\`\`\`
+This compiles and validates all routes, classifying them into Static (\`○\`) or Dynamic (\`ƒ\`) pages based on your data-fetching choices.
+
+2. **Start the Production Server**:
+\`\`\`bash
+npm run start
+\`\`\`
+This runs the compiled application, handling active user sessions and routing queries securely.
+`
+  };
+
   try {
     console.log("Connecting to database to insert/update blog posts...");
     
@@ -673,6 +916,21 @@ An API gateway sits between the client (mobile app or browser) and your backend 
         data: blog3
       });
       console.log(`Updated Blog Post: "${updated3.title}" (ID: ${updated3.id})`);
+    }
+
+    // Check & Seed Blog 4
+    const existing4 = await prisma.blogPost.findFirst({
+      where: { title: blog4.title }
+    });
+    if (!existing4) {
+      const created4 = await prisma.blogPost.create({ data: blog4 });
+      console.log(`Created Blog Post: "${created4.title}" (ID: ${created4.id})`);
+    } else {
+      const updated4 = await prisma.blogPost.update({
+        where: { id: existing4.id },
+        data: blog4
+      });
+      console.log(`Updated Blog Post: "${updated4.title}" (ID: ${updated4.id})`);
     }
 
     console.log("Seeding complete!");
