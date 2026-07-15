@@ -24,4 +24,10 @@ export const auth = betterAuth({
       },
     },
   },
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 60 * 60 * 24, // Cache session data in a signed cookie for 1 day
+    },
+  },
 });
