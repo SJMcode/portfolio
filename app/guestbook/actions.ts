@@ -10,9 +10,10 @@ import z from "zod";
 const guestbookSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(50),
   text: z.string().min(5, "Message must be at least 5 characters").max(500),
+  parentId: z.number().optional().nullable(),
 });
 
-export async function addMessage(data: { name: string; text: string }) {
+export async function addMessage(data: { name: string; text: string; parentId?: number | null }) {
   // Validate input fields with Zod
   const result = guestbookSchema.safeParse(data);
   if (!result.success) {
@@ -20,7 +21,7 @@ export async function addMessage(data: { name: string; text: string }) {
     return { ok: false, error: errorMessages };
   }
 
-  const { name, text } = result.data;
+  const { name, text, parentId } = result.data;
 
   try {
     // Check if user session exists (Server-side check)
@@ -28,10 +29,16 @@ export async function addMessage(data: { name: string; text: string }) {
       headers: await headers()
     });
 
+    // Option B: Require auth to reply
+    if (parentId && !session) {
+      return { ok: false, error: "You must be logged in to reply." };
+    }
+
     await prisma.guestbook.create({
       data: {
         name,
         text,
+        parentId: parentId || null,
         userId: session?.user?.id || null // Link comment to authenticated User model if logged in
       }
     });
@@ -39,9 +46,9 @@ export async function addMessage(data: { name: string; text: string }) {
     // Revalidate the guestbook page cache to display new messages instantly
     revalidatePath("/guestbook");
     return { ok: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Database error adding guestbook message:", error);
-    return { ok: false, error: "Database operation failed. Make sure your DATABASE_URL is set in .env." };
+    return { ok: false, error: `Database operation failed: ${error?.message || "Unknown error"}. Make sure your DATABASE_URL is set in .env.` };
   }
 }
 

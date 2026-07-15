@@ -65,6 +65,11 @@ model Guestbook {
   name      String
   text      String
   createdAt DateTime @default(now())
+
+  // Self-relation to support threaded replies
+  parentId  Int?
+  parent    Guestbook?  @relation("GuestbookReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Guestbook[] @relation("GuestbookReplies")
 }
 
 model BlogPost {

@@ -105,6 +105,11 @@ const DICTIONARY: TranslationDictionary = {
   guestbook_board_title: { sv: "Rekommendationer i Gästboken ({count})", en: "Recruiter Endorsements Board ({count})" },
   guestbook_no_signatures: { sv: "Inga signaturer än. Bli den första att skriva!", en: "No signatures yet. Be the first to sign!" },
   guestbook_verified_badge: { sv: "Verifierad", en: "Verified" },
+  guestbook_reply_btn: { sv: "Svara", en: "Reply" },
+  guestbook_reply_placeholder: { sv: "Skriv ett svar...", en: "Write a reply..." },
+  guestbook_reply_submit: { sv: "Skicka svar", en: "Submit Reply" },
+  guestbook_cancel: { sv: "Avbryt", en: "Cancel" },
+  guestbook_reply_auth_prompt: { sv: "Logga in för att svara", en: "Log in to reply" },
 
   // Blog Page
   blog_journal_title: { sv: "Safirs Teknikjournal", en: "Safir's Tech Journal" },

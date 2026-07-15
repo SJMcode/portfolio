@@ -15,6 +15,7 @@ export interface GuestbookEntry {
   text: string;
   createdAt: string;
   userImage?: string | null;
+  replies?: GuestbookEntry[];
 }
 
 interface GuestbookClientProps {
@@ -32,6 +33,11 @@ export function GuestbookClient({ initialMessages }: GuestbookClientProps) {
   const [name, setName] = useState("");
   const [text, setText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Reply States
+  const [activeReplyToId, setActiveReplyToId] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
   // Handle message submission
   const handleSubmitMessage = async (e: React.FormEvent) => {
@@ -57,6 +63,35 @@ export function GuestbookClient({ initialMessages }: GuestbookClientProps) {
       setText("");
     } else {
       toast.error(res.error || "Failed to submit message.");
+    }
+  };
+
+  const handleSubmitReply = async (e: React.FormEvent, parentId: number) => {
+    e.preventDefault();
+    if (!session) {
+      toast.error(t("guestbook_reply_auth_prompt", { default: "Log in to reply" }) === "guestbook_reply_auth_prompt" ? "Logga in för att svara." : t("guestbook_reply_auth_prompt"));
+      return;
+    }
+    if (!replyText.trim()) {
+      toast.error(t("guestbook_error_msg", { default: "Please enter a message." }) === "guestbook_error_msg" ? "Vänligen fyll i ett meddelande." : t("guestbook_error_msg"));
+      return;
+    }
+
+    setIsSubmittingReply(true);
+    const res = await addMessage({
+      name: session.user.name,
+      text: replyText.trim(),
+      parentId
+    });
+    setIsSubmittingReply(false);
+
+    if (res.ok) {
+      toast.success(t("guestbook_success", { default: "Reply submitted successfully!" }) === "guestbook_success" ? "Gästboken har signerats!" : "Svaret skickades!");
+      setReplyText("");
+      setActiveReplyToId(null);
+      window.location.reload();
+    } else {
+      toast.error(res.error || "Failed to submit reply.");
     }
   };
 
@@ -239,6 +274,115 @@ export function GuestbookClient({ initialMessages }: GuestbookClientProps) {
                 <p className="text-xs text-slate-700 dark:text-slate-350 leading-relaxed font-medium">
                   {msg.text}
                 </p>
+
+                {/* Nested Replies List */}
+                {msg.replies && msg.replies.length > 0 && (
+                  <div className="mt-4 pl-4 border-l border-slate-200 dark:border-slate-800 space-y-4">
+                    {msg.replies.map((reply) => (
+                      <div key={reply.id} className="space-y-1">
+                        <div className="flex justify-between items-center gap-2">
+                          <div className="flex items-center gap-2 flex-1">
+                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center font-bold text-[9px] text-slate-500 dark:text-slate-400 uppercase border border-slate-200 dark:border-slate-800 shrink-0">
+                              {reply.userImage ? (
+                                <img src={reply.userImage} alt={reply.name} className="w-full h-full rounded-full object-cover" />
+                              ) : (
+                                reply.name.charAt(0)
+                              )}
+                            </div>
+                            <div>
+                              <h5 className="text-[10px] font-bold text-slate-900 dark:text-slate-200 flex items-center gap-1">
+                                {reply.name}
+                                {reply.userImage && (
+                                  <span className="text-[7px] bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 px-1 py-0.2 rounded-full font-bold ml-1">{t("guestbook_verified_badge")}</span>
+                                )}
+                              </h5>
+                              <p className="text-[7px] text-slate-400 font-mono">
+                                {new Date(reply.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          {isAdmin && (
+                            <button
+                              onClick={async () => {
+                                if (confirm("Delete this reply?")) {
+                                  const res = await deleteGuestbookEntry(reply.id);
+                                  if (res.ok) {
+                                    toast.success("Reply deleted successfully!");
+                                    window.location.reload();
+                                  } else {
+                                    toast.error(res.error || "Failed to delete.");
+                                  }
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-600 font-bold text-[9px] cursor-pointer p-0.5 shrink-0"
+                              title="Delete reply"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-650 dark:text-slate-350 leading-relaxed font-medium pl-8">
+                          {reply.text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Reply Action / Form (Option B: Requires session to display active input form) */}
+                <div className="pt-1.5 flex flex-col gap-2">
+                  {activeReplyToId !== msg.id ? (
+                    <button
+                      onClick={() => {
+                        if (!session) {
+                          toast.error(t("guestbook_reply_auth_prompt", { default: "Log in to reply" }) === "guestbook_reply_auth_prompt" ? "Logga in för att svara." : t("guestbook_reply_auth_prompt"));
+                          return;
+                        }
+                        setActiveReplyToId(msg.id);
+                        setReplyText("");
+                      }}
+                      className="text-[10px] self-start text-violet-500 hover:text-violet-600 dark:text-violet-400 dark:hover:text-violet-300 font-bold cursor-pointer transition"
+                    >
+                      {t("guestbook_reply_btn", { default: "Reply" }) === "guestbook_reply_btn" ? "Svara" : t("guestbook_reply_btn")}
+                    </button>
+                  ) : (
+                    session && (
+                      <div className="w-full mt-1.5 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800/80">
+                        <form onSubmit={(e) => handleSubmitReply(e, msg.id)} className="space-y-3">
+                          <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-bold text-slate-400">
+                              {t("guestbook_sign_as", { name: session.user.name })}
+                            </label>
+                            <textarea
+                              rows={2}
+                              placeholder={t("guestbook_reply_placeholder", { default: "Write a reply..." }) === "guestbook_reply_placeholder" ? "Skriv ett svar..." : t("guestbook_reply_placeholder")}
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-violet-500 transition duration-300 resize-none"
+                              required
+                            />
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setActiveReplyToId(null)}
+                              className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 rounded-lg text-[10px] font-bold text-slate-850 dark:text-slate-200 cursor-pointer"
+                            >
+                              {t("guestbook_cancel", { default: "Cancel" }) === "guestbook_cancel" ? "Avbryt" : t("guestbook_cancel")}
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={isSubmittingReply}
+                              className="px-3 py-1.5 bg-gradient-to-r from-violet-500 to-indigo-500 text-slate-950 font-bold rounded-lg hover:brightness-110 transition cursor-pointer text-[10px] disabled:opacity-50"
+                            >
+                              {isSubmittingReply ? t("guestbook_submitting") : (t("guestbook_reply_submit", { default: "Submit Reply" }) === "guestbook_reply_submit" ? "Skicka svar" : t("guestbook_reply_submit"))}
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    )
+                  )}
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>
