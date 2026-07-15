@@ -18,8 +18,31 @@ const firaCode = Fira_Code({
 });
 
 export const metadata: Metadata = {
-  title: "Safir Jameel Manghat | Portfolio",
-  description: "Full-Stack & Backend Developer Portfolio",
+  title: {
+    default: "Safir Jameel Manghat | Portfolio",
+    template: "%s | Safir Jameel Manghat"
+  },
+  description: "Full-Stack & Backend Developer Portfolio specializing in Next.js, PostgreSQL database optimization, and high-performance backend systems.",
+  keywords: ["Safir Jameel Manghat", "Full-Stack Developer", "Backend Engineer", "Next.js", "PostgreSQL", "React", "Stockholm", "Software Developer"],
+  authors: [{ name: "Safir Jameel Manghat" }],
+  creator: "Safir Jameel Manghat",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://safir.dev",
+    title: "Safir Jameel Manghat | Full-Stack & Backend Developer",
+    description: "Full-Stack & Backend Developer Portfolio specializing in Next.js, PostgreSQL optimization, and event-driven architectures.",
+    siteName: "Safir Jameel Manghat Portfolio",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Safir Jameel Manghat | Portfolio",
+    description: "Full-Stack & Backend Developer Portfolio specializing in Next.js and PostgreSQL optimization.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  }
 };
 
 export default function RootLayout({
