@@ -31,7 +31,7 @@ In my Master's Thesis at Stockholm University, I designed a resource balancing f
   }
 ];
 
-export const revalidate = 60; // Cache page for 60 seconds
+export const dynamic = "force-dynamic";
 
 export default async function BlogPage() {
   let posts: BlogPost[] = [];
