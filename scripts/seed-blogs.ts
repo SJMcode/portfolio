@@ -423,9 +423,214 @@ If a live deployment fails, the goal is to return to a working state instantly w
 `
   };
 
+  const blog3 = {
+    title: "System Design & Network Architecture Essentials",
+    category: "System Design",
+    date: "2026-07-16",
+    readTime: "10 min read",
+    excerpt: "A comprehensive cheat sheet and roadmap for system design interviews, covering latency vs bandwidth, replication vs sharding, process vs thread, load balancers, and monolith vs microservices.",
+    content: `This document serves as a high-impact study guide and cheat sheet for system design interviews, mapping core networking principles, execution models, database scaling strategies, and software architectures.
+
+---
+
+### 1. Network Performance: Bandwidth vs. Latency vs. Throughput
+
+| Concept | What It Represents | Analogy | Real-World Example |
+| :--- | :--- | :--- | :--- |
+| **Bandwidth** | The maximum capacity of the network link. | The diameter of the water pipe. (A wider pipe has the capacity to hold more water at once). | A "100 Mbps" or "1 Gbps" internet connection. |
+| **Latency** | The delay (travel time) for a single packet. | The length of the water pipe. (It takes time for the first drop of water to travel from reservoir to tap). | Your ping / round-trip time (e.g., 15ms ping to Supabase). |
+| **Throughput** | The actual amount of data successfully delivered. | The flow rate of water coming out of the tap per second. | Your actual download speed (e.g., 85 Mbps on a 100 Mbps connection). |
+
+#### Deep Dive into Each Concept
+*   **Bandwidth (Potential Capacity)**: The theoretical maximum amount of data sent over a connection in one second. Having high bandwidth does not mean your site is fast. It just means your site can handle large files (like 4K video streams) or many concurrent users at once.
+*   **Latency (Speed / Delay)**: The round-trip time (RTT) for a packet. If your server in Stockholm makes 10 database queries to load a page, and database latency is 150ms (because the database is in the US), the page will take at least **1.5 seconds** to load (10 x 150ms), regardless of bandwidth! This is why database region proximity to servers is vital.
+*   **Throughput (Actual Performance)**: The actual speed of data transmission. Network congestion, high latency, server CPU load, and packet loss act like friction in the pipe, reducing the throughput relative to your bandwidth.
+
+#### The Gaming & Web App Example
+*   **High Bandwidth / High Latency**: Downloading a 10GB game. It doesn't matter if there's a 200ms delay before the download starts, as long as the download speed is fast (wide pipe).
+*   **Low Bandwidth / Low Latency**: Online multiplayer gaming. The game only sends tiny packets of player coordinates (needs low bandwidth), but needs instant travel time (latency under 20ms) to prevent lag.
+*   **Web Applications**: Needs low latency for database queries (for responsive UI/buttons) and high throughput during checkout surges (to process hundreds of concurrent orders).
+
+---
+
+### 2. Database Scalability: Replication vs. Sharding
+
+| Strategy | How It Works | Library Analogy | When to Use It |
+| :--- | :--- | :--- | :--- |
+| **Replication** | Copying the database onto multiple servers. | Printing 10 copies of the dictionary and placing them in different rooms so 10 people look up words at once. | For **Read-Heavy** apps (e.g., e-commerce stores, news blogs) where many users read data, but few write. |
+| **Sharding** | Splitting the database rows across multiple servers. | Tearing the dictionary in half (A–M in Room 1, N–Z in Room 2) because the book has grown too heavy for one table. | For **Write-Heavy** apps (e.g., Twitter, chat apps, payment logs) where the volume of data exceeds a single server's limits. |
+
+#### Database Replication (Copying)
+In a replicated setup, you have one Primary (Write) database server and multiple Secondary (Read) replicas:
+\`\`\`text
+                       [ Client App ]
+                             │
+                  ┌──────────┴──────────┐
+           (Writes)                     (Reads)
+                  ▼                     ▼
+          [ Primary DB ] ──(Sync)──► [ Read Replica 1 ]
+                                ──► [ Read Replica 2 ]
+\`\`\`
+*   **Workflow**: All inserts, updates, and deletes (writes) go to the Primary database. The Primary syncs these changes to the Read Replicas. Clients query/read data from the replicas.
+*   **Pros**:
+    *   **High Availability**: If the Primary database server crashes, a Read Replica is automatically promoted to be the new Primary (zero downtime).
+    *   **Scalable Reads**: You can spin up multiple replicas to handle millions of visitors browsing your site.
+
+#### Database Sharding (Horizontal Partitioning)
+Sharding splits a single table's rows across different database instances using a Shard Key (like user ID or country):
+\`\`\`text
+                       [ Shard Router ]
+                             │
+         ┌───────────────────┼───────────────────┐
+  (User A-M)              (User N-Z)          (User Log)
+         ▼                   ▼                   ▼
+    [ Shard 1 ]         [ Shard 2 ]         [ Shard 3 ]
+   (DB Server 1)       (DB Server 2)       (DB Server 3)
+\`\`\`
+*   **Workflow**: Instead of storing all users in one table on one server, users with names starting with A–M are stored on Server 1, and N–Z are stored on Server 2.
+*   **Pros**:
+    *   **Scalable Writes**: Writes are divided among multiple database engines, bypasses single CPU/disk constraints.
+    *   **Infinite Capacity**: Store petabytes of data by adding more shards.
+*   **Cons**:
+    *   **Complex Queries**: Queries spanning multiple ranges (e.g., searching for both A–M and N–Z users) require cross-server joins and merges, which is extremely slow.
+
+---
+
+### 3. Execution Models: Concurrency vs. Parallelism
+
+| Concept | How It Works | Kitchen Analogy | Hardware Requirement |
+| :--- | :--- | :--- | :--- |
+| **Concurrency** | Managing and switching between multiple tasks over time. | One Chef chopping onions for a minute, then stirring the soup, then checking the oven. Doing one task at any exact second. | Can run on a single-core CPU by rapidly switching tasks. |
+| **Parallelism** | Executing multiple tasks at the exact same instant. | Three Chefs working in the kitchen simultaneously. Chef A chops, Chef B stirs, and Chef C bakes at the same time. | Requires multi-core CPUs or multiple compute instances. |
+
+*   **Concurrency (Structure & Interleaving)**: The ability of a system to handle multiple tasks by dividing them into independent sub-tasks and switching back and forth (context-switching) very quickly.
+    *   *Node.js Context*: JavaScript is single-threaded. It achieves concurrency using the Event Loop. When your server makes a database query, JavaScript doesn't freeze; it puts that task on hold, handles a user button click, and comes back to the database result when it's ready.
+*   **Parallelism (Simultaneous Execution)**: Doing multiple tasks at the exact same physical instant. This requires multiple processors (cores) working together.
+    *   *Node.js Context*: Parallelism is used for heavy, CPU-bound computations (like video rendering, image processing, or training machine learning models). You split the image into 8 sections and let 8 CPU cores render their sections at the exact same time.
+
+---
+
+### 4. Real-time Communication: Polling vs. Webhooks
+
+| Metric | Polling | Webhook |
+| :--- | :--- | :--- |
+| **Request Initiator** | Client | Server |
+| **Communication Model** | Pull (Querying) | Push (Event-driven) |
+| **Resource Efficiency** | Low (high waste) | High (zero waste) |
+| **Real-time Accuracy** | Delayed (depends on the poll interval) | Instant (occurs the second the event happens) |
+| **Setup Complexity** | Simple | More complex (requires route handlers & web security) |
+
+#### Polling (Client-Driven / Pull)
+In a polling setup, the client is in control. It periodically sends HTTP requests to the server at a regular interval (e.g., every 5 seconds).
+\`\`\`text
+  [ Client ] ────────── Is there new data? ──────────► [ Server ]
+  [ Client ] ◄──────────── No. (200 OK) ───────────── [ Server ]
+  
+  (Wait 5 seconds...)
+  
+  [ Client ] ────────── Is there new data? ──────────► [ Server ]
+  [ Client ] ◄───────── Yes! Here is the data ──────── [ Server ]
+\`\`\`
+*   **Pros**: Easy to write and implement on the frontend (e.g. using setInterval).
+*   **Cons**: Wasteful. If data only updates once a day, your client will make thousands of useless HTTP requests, consuming server CPU and bandwidth.
+
+#### Webhooks (Server-Driven / Push)
+A Webhook (also called a "Reverse API") is event-driven. The client registers an API endpoint URL (a listener) on the server. When the server registers the event, it sends an HTTP POST request containing the data to the client's URL.
+\`\`\`text
+  [ Client ] ... (Sitting idle / waiting) ...         [ Server ]
+  
+  (Event happens: Customer completes payment)
+  
+  [ Client ] ◄───────── POST /api/stripe-webhook ───── [ Server ]
+  [ Client ] ────────── Received! (200 OK) ──────────► [ Server ]
+\`\`\`
+*   **Pros**: Highly efficient. No resources are wasted. Communication only happens when actual work needs to be done.
+*   **Cons**: You must expose a public URL endpoint (Vercel routes are perfect for this) and secure it with signature checks to prevent hackers from sending fake events.
+
+---
+
+### 5. OS Primitives: Process vs. Thread
+
+| Feature | Process | Thread |
+| :--- | :--- | :--- |
+| **Definition** | An executing application. | A single task execution unit inside a process. |
+| **Memory** | Isolated (each process has its own RAM). | Shared (threads share the parent process's RAM). |
+| **Creation Cost** | High (expensive to create and switch). | Low (very fast and lightweight). |
+| **Fault Tolerance** | High (one crash doesn't affect others). | Low (one thread crash kills the whole process). |
+
+*   **Process**: A program in execution. When you double-click an application icon, the operating system starts a new process.
+    *   *Memory Isolation*: The OS allocates a dedicated block of memory (RAM) to that process. This memory is protected; if Process A tries to read Process B's memory, the OS blocks it.
+    *   *Crash Proof*: If a process crashes (e.g., a browser tab crashes), only that process dies. Your other tabs (which are separate processes) keep running safely.
+*   **Thread**: A path of execution inside a process. A single process can spawn multiple threads to perform different tasks at the same time.
+    *   *Shared Memory*: Because all threads belong to the same process, they share the exact same variables, memory heap, and database connection handles. This makes sharing data between threads extremely fast.
+    *   *Thread Safety Risks*: Because threads share variables, if Thread 1 writes to a variable at the same millisecond that Thread 2 is reading it, you get data corruption (called a **Race Condition**). Developers must write locks to prevent this.
+
+---
+
+### 6. Traffic Management: Load Balancer vs. API Gateway
+
+| Feature | Load Balancer | API Gateway |
+| :--- | :--- | :--- |
+| **Primary Goal** | Redundancy & keeping servers from crashing under load. | Security, routing, and traffic management for APIs. |
+| **Intelligence** | Low (does not care what is inside the request packet). | High (inspects cookies, tokens, headers, and paths). |
+| **Typical Protocols** | Layer 4 (TCP/UDP) or Layer 7 (HTTP). | Layer 7 (HTTP/REST, GraphQL, gRPC). |
+| **Typical Tasks** | Health checks, round-robin routing, SSL offloading. | Authentication, Rate Limiting, API Routing, Caching. |
+
+#### Load Balancer (The Traffic Cop)
+A load balancer sits in front of your servers and distributes incoming network requests to multiple instances of the same service.
+\`\`\`text
+                               [ Incoming Traffic ]
+                                        │
+                                        ▼
+                                 [ Load Balancer ]
+                                  /     │     \
+                             ┌───┘      │      └───┐
+                             ▼          ▼          ▼
+                        [Server 1]  [Server 2]  [Server 3]
+\`\`\`
+*   **Workflow**: It acts purely at the network level (TCP/HTTP) to distribute traffic. It checks server health and forwards requests using algorithms like Round Robin.
+
+#### API Gateway (The Smart Entry Point)
+An API gateway sits between the client (mobile app or browser) and your backend microservices. It is a reverse proxy that inspects the request headers, cookies, and tokens.
+\`\`\`text
+                               [ Client Requests ]
+                                        │
+                                        ▼
+                                 [ API Gateway ]
+                                  (Auth, Rate Limit)
+                                  /     │     \
+                             ┌───┘      │      └───┐
+                      (Movies)          │          (Billing)
+                             ▼          ▼          ▼
+                        [Movie API] [Cart API] [Stripe API]
+\`\`\`
+*   **Workflow**: It acts at the application layer. It reads what the client wants and routes requests dynamically (e.g., \`/movies\` goes to Movie service, \`/checkout\` goes to Stripe). It also handles auth checks and rate limiting.
+
+---
+
+### 7. Software Architecture: Monolith vs. Microservices
+
+| Metric | Monolith | Microservices |
+| :--- | :--- | :--- |
+| **Codebase** | One single repository. | Multiple separate repositories. |
+| **Deployment** | Single deployment package. | Multiple independent deployments. |
+| **Team Size** | Best for 1–10 developers. | Best for large organizations (100+ developers). |
+| **Network Overhead** | Zero (local function calls). | High (constant API calls between servers). |
+| **Startup Cost** | Low. | High. |
+
+*   **Monolith**: The entire app (Auth, Database, Payments, Catalog) is built as a single, unified codebase.
+    *   *Pros*: Simple development, fast transactions (everything uses the same database), and low hosting costs.
+    *   *Cons*: Single Point of Failure (a bug in one module can crash the whole app), slow deployments as the codebase grows.
+*   **Microservices**: The app is split into independent services that run on different servers, maintain their own databases, and communicate over the network.
+    *   *Pros*: Technology freedom (different languages per service), independent scaling (scale up catalog without touching billing), and team autonomy.
+    *   *Cons*: Extreme complexity (networking latency, network failures), distributed data consistency issues, and high hosting costs.
+`
+  };
+
   try {
-    console.log("Connecting to database to insert blog posts...");
-    // Check if they already exist to avoid duplicate seedings
+    console.log("Connecting to database to insert/update blog posts...");
+    
+    // Check & Seed Blog 1
     const existing1 = await prisma.blogPost.findFirst({
       where: { title: blog1.title }
     });
@@ -440,6 +645,7 @@ If a live deployment fails, the goal is to return to a working state instantly w
       console.log(`Updated Blog Post: "${updated1.title}" (ID: ${updated1.id})`);
     }
 
+    // Check & Seed Blog 2
     const existing2 = await prisma.blogPost.findFirst({
       where: { title: blog2.title }
     });
@@ -452,6 +658,21 @@ If a live deployment fails, the goal is to return to a working state instantly w
         data: blog2
       });
       console.log(`Updated Blog Post: "${updated2.title}" (ID: ${updated2.id})`);
+    }
+
+    // Check & Seed Blog 3
+    const existing3 = await prisma.blogPost.findFirst({
+      where: { title: blog3.title }
+    });
+    if (!existing3) {
+      const created3 = await prisma.blogPost.create({ data: blog3 });
+      console.log(`Created Blog Post: "${created3.title}" (ID: ${created3.id})`);
+    } else {
+      const updated3 = await prisma.blogPost.update({
+        where: { id: existing3.id },
+        data: blog3
+      });
+      console.log(`Updated Blog Post: "${updated3.title}" (ID: ${updated3.id})`);
     }
 
     console.log("Seeding complete!");
