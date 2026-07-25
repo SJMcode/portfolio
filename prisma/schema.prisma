@@ -80,6 +80,7 @@ model BlogPost {
   readTime  String
   excerpt   String
   content   String
+  image     String?
   createdAt DateTime @default(now())
 }
 

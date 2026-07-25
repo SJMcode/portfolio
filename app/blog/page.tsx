@@ -49,7 +49,8 @@ export default async function BlogPage() {
       date: p.date,
       readTime: p.readTime,
       excerpt: p.excerpt,
-      content: p.content
+      content: p.content,
+      image: p.image || undefined
     }));
   } catch (error) {
     console.warn("Could not query blog database, falling back to static posts.", error);

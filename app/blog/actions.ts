@@ -12,6 +12,7 @@ const articleSchema = z.object({
   readTime: z.string().min(2, "Read time must be specified (e.g. 5 min read)").max(20),
   excerpt: z.string().min(10, "Excerpt must be at least 10 characters").max(300),
   content: z.string().min(20, "Content must be at least 20 characters"),
+  image: z.string().optional() 
 });
 
 export async function createBlogPost(data: {
@@ -20,6 +21,7 @@ export async function createBlogPost(data: {
   readTime: string;
   excerpt: string;
   content: string;
+  image?: string;
 }) {
   // Validate input fields with Zod
   const result = articleSchema.safeParse(data);
@@ -28,7 +30,7 @@ export async function createBlogPost(data: {
     return { ok: false, error: errorMessages };
   }
 
-  const { title, category, readTime, excerpt, content } = result.data;
+  const { title, category, readTime, excerpt, content, image } = result.data;
 
   try {
     // Authenticate user session and verify admin role server-side
@@ -47,6 +49,7 @@ export async function createBlogPost(data: {
         readTime,
         excerpt,
         content,
+        image: image || null, 
         date: new Date().toISOString().split("T")[0] // YYYY-MM-DD
       }
     });
@@ -78,6 +81,52 @@ export async function deleteBlogPost(id: number) {
     return { ok: true };
   } catch (error) {
     console.error("Failed to delete blog post:", error);
+    return { ok: false, error: "Database operation failed." };
+  }
+}
+
+export async function updateBlogPost(id: number, data: {
+  title: string;
+  category: string;
+  readTime: string;
+  excerpt: string;
+  content: string;
+  image?: string;
+}) {
+  // Validate input fields with Zod
+  const result = articleSchema.safeParse(data);
+  if (!result.success) {
+    const errorMessages = result.error.issues.map(err => err.message).join(", ");
+    return { ok: false, error: errorMessages };
+  }
+
+  const { title, category, readTime, excerpt, content, image } = result.data;
+
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers()
+    });
+
+    if (!session || (session.user as any).role !== "admin") {
+      return { ok: false, error: "Unauthorized. Admin credentials required." };
+    }
+
+    await prisma.blogPost.update({
+      where: { id },
+      data: {
+        title,
+        category,
+        readTime,
+        excerpt,
+        content,
+        image: image || null
+      }
+    });
+
+    revalidatePath("/blog");
+    return { ok: true };
+  } catch (error) {
+    console.error("Failed to update blog post:", error);
     return { ok: false, error: "Database operation failed." };
   }
 }

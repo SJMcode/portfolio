@@ -429,6 +429,7 @@ If a live deployment fails, the goal is to return to a working state instantly w
     date: "2026-07-16",
     readTime: "10 min read",
     excerpt: "A comprehensive cheat sheet and roadmap for system design interviews, covering latency vs bandwidth, replication vs sharding, process vs thread, load balancers, and monolith vs microservices.",
+    image: "/system_design.jpg",
     content: `This document serves as a high-impact study guide and cheat sheet for system design interviews, mapping core networking principles, execution models, database scaling strategies, and software architectures.
 
 ---

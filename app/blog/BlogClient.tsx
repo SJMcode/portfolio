@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/Card";
 import { useLanguage } from "@/context/LanguageContext";
 import { authClient } from "@/lib/auth-client";
-import { createBlogPost, deleteBlogPost } from "./actions";
+import { createBlogPost, deleteBlogPost, updateBlogPost } from "./actions";
 import { toast } from "sonner";
 
 export interface BlogPost {
@@ -16,6 +16,7 @@ export interface BlogPost {
   readTime: string;
   excerpt: string;
   content: string;
+  image?: string;
 }
 
 interface BlogClientProps {
@@ -24,6 +25,7 @@ interface BlogClientProps {
 
 export function BlogClient({ initialPosts }: BlogClientProps) {
   const { t } = useLanguage();
+  const [image, setImage] = useState("");
   const { data: session } = authClient.useSession();
   const isAdmin = session?.user && (session.user as any).role === "admin";
 
@@ -38,6 +40,16 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
   const [readTime, setReadTime] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [content, setContent] = useState("");
+
+  // Edit Article Modal States
+  const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editReadTime, setEditReadTime] = useState("");
+  const [editImage, setEditImage] = useState("");
+  const [editExcerpt, setEditExcerpt] = useState("");
+  const [editContent, setEditContent] = useState("");
 
   const filteredPosts = initialPosts.filter(post =>
     post.title.toLowerCase().includes(blogSearch.toLowerCase()) ||
@@ -54,7 +66,7 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
     }
 
     setIsPublishing(true);
-    const res = await createBlogPost({ title, category, readTime, excerpt, content });
+    const res = await createBlogPost({ title, category, readTime, excerpt, content, image });
     setIsPublishing(false);
 
     if (res.ok) {
@@ -64,9 +76,40 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
       setReadTime("");
       setExcerpt("");
       setContent("");
+      setImage("");
       setShowAddModal(false);
     } else {
       toast.error(res.error || "Failed to publish article.");
+    }
+  };
+
+  // Handle updating an existing post
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPost) return;
+
+    if (!editTitle || !editCategory || !editReadTime || !editExcerpt || !editContent) {
+      toast.error("Please fill in all fields.");
+      return;
+    }
+
+    setIsUpdating(true);
+    const res = await updateBlogPost(editingPost.id, {
+      title: editTitle,
+      category: editCategory,
+      readTime: editReadTime,
+      excerpt: editExcerpt,
+      content: editContent,
+      image: editImage,
+    });
+    setIsUpdating(false);
+
+    if (res.ok) {
+      toast.success("Blog article updated successfully!");
+      setEditingPost(null);
+      window.location.reload();
+    } else {
+      toast.error(res.error || "Failed to update article.");
     }
   };
 
@@ -115,6 +158,18 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
             className="border-slate-200 hover:border-emerald-500/40 hover:shadow-emerald-500/5 transition-all duration-300 bg-white dark:bg-slate-950/60 p-8 rounded-2xl cursor-pointer flex flex-col justify-between min-h-64"
           >
             <div className="space-y-3">
+              {post.image && (
+                <div className="w-full h-44 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800/85 bg-slate-100 dark:bg-slate-900 flex items-center justify-center mb-1">
+                  <img
+                    src={post.image}
+                    alt={post.title}
+                    className="w-full h-full object-cover object-top hover:scale-102 transition-transform duration-500"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
               <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                 <span>{post.category}</span>
                 <span className="text-slate-400 font-mono">{post.readTime}</span>
@@ -130,25 +185,44 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
               <div className="flex items-center gap-3">
                 <span>{post.date}</span>
                 {isAdmin && typeof post.id === "number" && (
-                  <button
-                    onClick={async (e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (confirm("Delete this blog post?")) {
-                        const res = await deleteBlogPost(post.id);
-                        if (res.ok) {
-                          toast.success("Blog article deleted successfully!");
-                          window.location.reload();
-                        } else {
-                          toast.error(res.error || "Failed to delete.");
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setEditingPost(post);
+                        setEditTitle(post.title);
+                        setEditCategory(post.category);
+                        setEditReadTime(post.readTime);
+                        setEditImage(post.image || "");
+                        setEditExcerpt(post.excerpt);
+                        setEditContent(post.content);
+                      }}
+                      className="text-sky-500 hover:text-sky-600 font-bold cursor-pointer transition"
+                      title="Edit blog post"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (confirm("Delete this blog post?")) {
+                          const res = await deleteBlogPost(post.id);
+                          if (res.ok) {
+                            toast.success("Blog article deleted successfully!");
+                            window.location.reload();
+                          } else {
+                            toast.error(res.error || "Failed to delete.");
+                          }
                         }
-                      }
-                    }}
-                    className="text-red-500 hover:text-red-600 font-bold cursor-pointer transition"
-                    title="Delete blog post"
-                  >
-                    🗑️ Delete
-                  </button>
+                      }}
+                      className="text-red-500 hover:text-red-600 font-bold cursor-pointer transition"
+                      title="Delete blog post"
+                    >
+                      🗑️ Delete
+                    </button>
+                  </>
                 )}
               </div>
               <span className="text-emerald-500 font-bold hover:underline">{t("blog_read_article")}</span>
@@ -194,6 +268,15 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
                 </h3>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{selectedPost.date}</p>
               </div>
+              {selectedPost.image && (
+                <div className="w-full h-64 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
+                  <img
+                    src={selectedPost.image}
+                    alt={selectedPost.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
               <div className="text-sm text-slate-700 dark:text-slate-350 leading-relaxed font-medium space-y-4 whitespace-pre-line border-t border-slate-100 dark:border-slate-800/80 pt-6">
                 {selectedPost.content}
               </div>
@@ -277,6 +360,17 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
                 </div>
 
                 <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Image URL / Path (Optional)</label>
+                  <input
+                    type="text"
+                    value={image}
+                    onChange={(e) => setImage(e.target.value)}
+                    placeholder="e.g. /movie_portal_thumbnail.jpg or https://..."
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition duration-300"
+                  />
+                </div>
+
+                <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-400">{t("blog_label_excerpt")}</label>
                   <input
                     type="text"
@@ -314,6 +408,129 @@ export function BlogClient({ initialPosts }: BlogClientProps) {
                     className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl transition cursor-pointer disabled:opacity-50"
                   >
                     {isPublishing ? t("blog_submitting") : t("blog_submit_btn")}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Overlay for Editing Existing Article (Admin Only) */}
+      <AnimatePresence>
+        {editingPost && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 md:p-6 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto p-8 space-y-6 text-left shadow-2xl relative"
+            >
+              <button
+                onClick={() => setEditingPost(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+              
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
+                  Edit Article
+                </h3>
+              </div>
+
+              <form onSubmit={handleUpdate} className="space-y-4 pt-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">{t("blog_label_title")}</label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="e.g. My Next.js Journey"
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition duration-300"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-400">{t("blog_label_category")}</label>
+                    <input
+                      type="text"
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value)}
+                      placeholder="e.g. Frontend"
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition duration-300"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-400">{t("blog_label_readtime")}</label>
+                    <input
+                      type="text"
+                      value={editReadTime}
+                      onChange={(e) => setEditReadTime(e.target.value)}
+                      placeholder="e.g. 5 min read"
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition duration-300"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Image URL / Path (Optional)</label>
+                  <input
+                    type="text"
+                    value={editImage}
+                    onChange={(e) => setEditImage(e.target.value)}
+                    placeholder="e.g. /movie_portal_thumbnail.jpg or https://..."
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition duration-300"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">{t("blog_label_excerpt")}</label>
+                  <input
+                    type="text"
+                    value={editExcerpt}
+                    onChange={(e) => setEditExcerpt(e.target.value)}
+                    placeholder="Short introduction..."
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition duration-300"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">{t("blog_label_content")}</label>
+                  <textarea
+                    rows={6}
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    placeholder="Full article content (minimum 20 characters)..."
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500 transition duration-300 resize-none"
+                    required
+                  />
+                </div>
+
+                <div className="pt-4 flex justify-end gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setEditingPost(null)}
+                    className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUpdating}
+                    className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl transition cursor-pointer disabled:opacity-50"
+                  >
+                    {isUpdating ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
               </form>
