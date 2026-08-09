@@ -82,6 +82,55 @@ export async function addProjectCase(data: {
   }
 }
 
+// Update project case study
+export async function updateProjectCase(
+  id: string,
+  data: {
+    title: string;
+    category: string;
+    image: string;
+    url: string;
+    techStack: string;
+    linkText: string;
+  }
+) {
+  if (!(await checkAdmin())) {
+    return { ok: false, error: "Unauthorized. Admin credentials required." };
+  }
+
+  try {
+    if (id.startsWith("static-")) {
+      await prisma.projectCase.create({
+        data: {
+          title: data.title,
+          category: data.category,
+          image: data.image,
+          url: data.url,
+          techStack: data.techStack,
+          linkText: data.linkText,
+        },
+      });
+    } else {
+      await prisma.projectCase.update({
+        where: { id },
+        data: {
+          title: data.title,
+          category: data.category,
+          image: data.image,
+          url: data.url,
+          techStack: data.techStack,
+          linkText: data.linkText,
+        },
+      });
+    }
+    revalidatePath("/skills");
+    return { ok: true };
+  } catch (error) {
+    console.error("Failed to update project case:", error);
+    return { ok: false, error: "Database operation failed." };
+  }
+}
+
 // Delete project case study
 export async function deleteProjectCase(id: string) {
   if (!(await checkAdmin())) {

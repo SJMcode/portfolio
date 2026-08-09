@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/Card";
 import { useLanguage } from "@/context/LanguageContext";
 import { authClient } from "@/lib/auth-client";
-import { addSkill, deleteSkill, addProjectCase, deleteProjectCase, getSkillsData } from "@/app/actions/skills";
+import { addSkill, deleteSkill, addProjectCase, updateProjectCase, deleteProjectCase, getSkillsData } from "@/app/actions/skills";
 import { toast } from "sonner";
 
 // Static Competency fallbacks
@@ -60,6 +60,7 @@ export default function SkillsPage() {
   // Admin Input States
   const [newSkillName, setNewSkillName] = useState("");
   const [showProjectModal, setShowProjectModal] = useState(false);
+  const [editingCaseId, setEditingCaseId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Project input fields
@@ -151,6 +152,32 @@ export default function SkillsPage() {
     ];
   }, [dbCases, t]);
 
+  // Open modal to add a project
+  const handleOpenAddModal = () => {
+    setEditingCaseId(null);
+    setProjTitle("");
+    setProjCategory("CASE STUDY");
+    setProjImage("auto");
+    setProjUrl("");
+    setProjTechStack("");
+    setProjLinkText("Visit live site");
+    setShowProjectModal(true);
+  };
+
+  // Open modal to edit an existing project
+  const handleOpenEditModal = (proj: ProjectCaseItem, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditingCaseId(proj.id);
+    setProjTitle(proj.title);
+    setProjCategory(proj.category);
+    setProjImage(proj.image || "auto");
+    setProjUrl(proj.url);
+    setProjTechStack(proj.techStack);
+    setProjLinkText(proj.linkText || "Visit live site");
+    setShowProjectModal(true);
+  };
+
   // Add a new skill competency
   const handleAddSkill = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,8 +214,8 @@ export default function SkillsPage() {
     }
   };
 
-  // Add project case card
-  const handleAddProject = async (e: React.FormEvent) => {
+  // Add or Update project case card
+  const handleSaveProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projTitle || !projUrl || !projTechStack) {
       toast.error("Please fill in all required fields.");
@@ -196,18 +223,24 @@ export default function SkillsPage() {
     }
 
     setIsSaving(true);
-    const res = await addProjectCase({
+    const projectPayload = {
       title: projTitle,
       category: projCategory,
       image: projImage,
       url: projUrl,
       techStack: projTechStack,
       linkText: projLinkText,
-    });
+    };
+
+    const res = editingCaseId
+      ? await updateProjectCase(editingCaseId, projectPayload)
+      : await addProjectCase(projectPayload);
+
     setIsSaving(false);
 
     if (res.ok) {
-      toast.success("Project Case Study added!");
+      toast.success(editingCaseId ? "Project Case Study updated!" : "Project Case Study added!");
+      setEditingCaseId(null);
       setProjTitle("");
       setProjUrl("");
       setProjTechStack("");
@@ -335,7 +368,7 @@ export default function SkillsPage() {
           </span>
           {isAdmin && (
             <button
-              onClick={() => setShowProjectModal(true)}
+              onClick={handleOpenAddModal}
               className="px-3 py-1.5 bg-pink-500 hover:brightness-110 text-slate-950 font-bold rounded-lg text-xs transition cursor-pointer"
             >
               ➕ Add Project Case
@@ -354,14 +387,26 @@ export default function SkillsPage() {
             >
               <Card className="border-pink-500/20 hover:border-pink-500/40 hover:shadow-pink-500/5 transition-all duration-300 bg-white dark:bg-slate-950/60 overflow-hidden p-8 relative">
                 
-                {/* Delete button for admin cases */}
-                {isAdmin && !proj.id.startsWith("static-") && (
-                  <button
-                    onClick={(e) => handleDeleteProject(proj.id, e)}
-                    className="absolute top-4 right-4 z-10 px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-[9px] font-bold rounded cursor-pointer"
-                  >
-                    🗑️ Delete
-                  </button>
+                {/* Admin Actions (Edit & Delete) */}
+                {isAdmin && (
+                  <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5">
+                    <button
+                      onClick={(e) => handleOpenEditModal(proj, e)}
+                      className="px-2.5 py-1 bg-sky-500 hover:bg-sky-600 text-slate-950 text-[10px] font-bold rounded cursor-pointer transition shadow-sm"
+                      title="Edit Case Study"
+                    >
+                      ✏️ Edit
+                    </button>
+                    {!proj.id.startsWith("static-") && (
+                      <button
+                        onClick={(e) => handleDeleteProject(proj.id, e)}
+                        className="px-2.5 py-1 bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold rounded cursor-pointer transition shadow-sm"
+                        title="Delete Case Study"
+                      >
+                        🗑️ Delete
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 <CardHeader className="pb-3">
@@ -419,7 +464,7 @@ export default function SkillsPage() {
         </div>
       </div>
 
-      {/* Project Case Insertion Dialog (Admin Only) */}
+      {/* Project Case Insertion / Edit Dialog (Admin Only) */}
       <AnimatePresence>
         {showProjectModal && (
           <motion.div
@@ -441,10 +486,10 @@ export default function SkillsPage() {
                 ✕
               </button>
               <h3 className="text-sm font-extrabold text-pink-500 dark:text-pink-400 uppercase tracking-wider">
-                Create Project Case Study
+                {editingCaseId ? "Edit Project Case Study" : "Create Project Case Study"}
               </h3>
               
-              <form onSubmit={handleAddProject} className="space-y-4">
+              <form onSubmit={handleSaveProject} className="space-y-4">
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-400">Project Title</label>
                   <input
@@ -531,7 +576,13 @@ export default function SkillsPage() {
                     disabled={isSaving}
                     className="px-6 py-2.5 bg-pink-500 hover:brightness-110 text-slate-950 font-bold rounded-xl transition cursor-pointer disabled:opacity-50"
                   >
-                    {isSaving ? "Adding..." : "Add Project"}
+                    {isSaving
+                      ? editingCaseId
+                        ? "Saving..."
+                        : "Adding..."
+                      : editingCaseId
+                      ? "Save Changes"
+                      : "Add Project"}
                   </button>
                 </div>
               </form>
