@@ -65,10 +65,21 @@ export default function SkillsPage() {
   // Project input fields
   const [projTitle, setProjTitle] = useState("");
   const [projCategory, setProjCategory] = useState("CASE STUDY");
-  const [projImage, setProjImage] = useState("/movie_portal_thumbnail.jpg");
+  const [projImage, setProjImage] = useState("auto");
   const [projUrl, setProjUrl] = useState("");
   const [projTechStack, setProjTechStack] = useState("");
   const [projLinkText, setProjLinkText] = useState("Visit live site");
+
+  // Helper to resolve landing page snapshot or custom image
+  const getSnapshotUrl = (url: string, image?: string) => {
+    if (image && image.trim() !== "" && image !== "auto") {
+      return image;
+    }
+    if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+      return `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url`;
+    }
+    return "/movie_portal_thumbnail.jpg";
+  };
 
   // Stockholm Clock
   useEffect(() => {
@@ -116,7 +127,7 @@ export default function SkillsPage() {
         id: "static-1",
         title: t("skills_case_1_title"),
         category: "CASE STUDY",
-        image: "/movie_portal_thumbnail.jpg",
+        image: "auto",
         url: "https://ecommerce-movie-portal.vercel.app/",
         techStack: [
           t("skills_case_1_desc_1"),
@@ -360,15 +371,36 @@ export default function SkillsPage() {
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mt-0.5">{proj.category}</span>
                 </CardHeader>
                 <CardContent>
-                  <div className="w-full h-44 overflow-hidden rounded-lg mb-4 border border-slate-200 dark:border-slate-800/80 bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
-                    <img
-                      src={proj.image}
-                      alt={proj.title}
-                      className="w-full h-full object-cover object-top group-hover:scale-102 transition-transform duration-500"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
+                  {/* Browser Snapshot Container */}
+                  <div className="w-full rounded-xl mb-4 border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 overflow-hidden shadow-sm">
+                    {/* Mini Browser Bar */}
+                    <div className="px-3 py-1.5 bg-slate-200/70 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate max-w-[220px]">
+                        {proj.url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                      </div>
+                      <div className="w-6" />
+                    </div>
+
+                    {/* Snapshot Image */}
+                    <div className="w-full h-44 overflow-hidden relative bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
+                      <img
+                        src={getSnapshotUrl(proj.url, proj.image)}
+                        alt={proj.title}
+                        loading="lazy"
+                        className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (target.src !== "/movie_portal_thumbnail.jpg") {
+                            target.src = "/movie_portal_thumbnail.jpg";
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
                   
                   <ul className="text-xs text-slate-650 dark:text-slate-400 space-y-2 mb-4 leading-relaxed font-medium">
@@ -439,11 +471,12 @@ export default function SkillsPage() {
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-slate-400">Image Path / URL</label>
+                    <label className="text-[10px] uppercase font-bold text-slate-400">Image Path / URL (set &apos;auto&apos; for live snapshot)</label>
                     <input
                       type="text"
                       value={projImage}
                       onChange={(e) => setProjImage(e.target.value)}
+                      placeholder="auto or /image.png"
                       className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 outline-none"
                       required
                     />
